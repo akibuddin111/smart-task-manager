@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test and coverage output
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local database files and backups
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.backup
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Debug output
+npm-debug.log*
