@@ -100,15 +100,16 @@ export default function AppLayout() {
             <span className="sidebar-link-label">Projects</span>
           </NavLink>
 
-          <div
-            className="sidebar-link sidebar-link-disabled"
-            aria-disabled="true"
-            title="Tasks page is not implemented yet"
+          <NavLink
+            to="/tasks"
+            className="sidebar-link"
+            title="Tasks"
+            onClick={closeMobileSidebar}
           >
             <span className="sidebar-link-icon" aria-hidden="true">☷</span>
             <span className="sidebar-link-label">Tasks</span>
-            <span className="sidebar-coming-soon">Soon</span>
-          </div>
+          </NavLink>
+
         </nav>
 
         <div className="sidebar-bottom">

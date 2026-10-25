@@ -158,8 +158,58 @@ async function login(req, res) {
     });
   }
 }
+// GET /api/auth/me
+async function getCurrentUser(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email
+       FROM users
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found.",
+      });
+    }
+
+    return res.status(200).json({
+      user: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Fetching current user failed:", error.message);
+
+    return res.status(500).json({
+      message: "Unable to fetch current user.",
+    });
+  }
+}
+
+// GET /api/auth/users
+async function getUsers(req, res) {
+  try {
+    const result = await pool.query(
+      `SELECT id, name, email
+       FROM users
+       ORDER BY name ASC`
+    );
+
+    return res.status(200).json({
+      users: result.rows,
+    });
+  } catch (error) {
+    console.error("Fetching users failed:", error.message);
+
+    return res.status(500).json({
+      message: "Unable to fetch users.",
+    });
+  }
+}
 
 module.exports = {
   register,
   login,
+  getCurrentUser,
+  getUsers,
 };

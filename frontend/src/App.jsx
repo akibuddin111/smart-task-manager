@@ -6,6 +6,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ProjectsPage from "./pages/ProjectsPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/AppLayout";
+import TasksPage from "./pages/TasksPage";
 import "./App.css";
 import "./styles/components.css";
 
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/tasks" element={<TasksPage />} />
         </Route>
       </Route>
 
