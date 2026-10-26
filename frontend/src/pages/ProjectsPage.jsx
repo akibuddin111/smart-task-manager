@@ -146,7 +146,8 @@ function CloseIcon() {
 }
 
 export default function ProjectsPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "Admin";
 
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -157,6 +158,15 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Project membership management (Admin only)
+  const [membershipProject, setMembershipProject] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membershipSaving, setMembershipSaving] = useState(false);
+  const [membershipError, setMembershipError] = useState("");
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -191,6 +201,8 @@ export default function ProjectsPage() {
   }, [loadProjects]);
 
   function openCreateForm() {
+    if (!isAdmin) return;
+
     setEditingId(null);
     setForm(initialForm);
     setFormOpen(true);
@@ -198,6 +210,8 @@ export default function ProjectsPage() {
   }
 
   function openEditForm(project) {
+    if (!isAdmin) return;
+
     setEditingId(project.id);
     setForm({
       name: project.name || "",
@@ -227,6 +241,11 @@ export default function ProjectsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+
+    if (!isAdmin) {
+      setError("Only Admin users can manage projects.");
+      return;
+    }
 
     const name = form.name.trim();
     const description = form.description.trim();
@@ -278,6 +297,8 @@ export default function ProjectsPage() {
   }
 
   async function handleDelete(project) {
+    if (!isAdmin) return;
+
     const confirmed = await confirmDelete(
       `Delete "${project.name}"?`,
       "This action cannot be undone."
@@ -298,6 +319,135 @@ export default function ProjectsPage() {
     }
   }
 
+    async function openMembershipManager(project) {
+    if (!isAdmin) return;
+
+    setMembershipProject(project);
+    setMembers([]);
+    setTeamMembers([]);
+    setSelectedMemberId("");
+    setMembershipError("");
+    setMembersLoading(true);
+
+    try {
+      const [membersResponse, teamResponse] = await Promise.all([
+        apiRequest(`/projects/${project.id}/members`, { token }),
+        apiRequest("/auth/team-members", { token }),
+      ]);
+
+      setMembers(
+        Array.isArray(membersResponse)
+          ? membersResponse
+          : membersResponse?.members ?? []
+      );
+
+      setTeamMembers(
+        Array.isArray(teamResponse)
+          ? teamResponse
+          : teamResponse?.users ?? []
+      );
+    } catch (err) {
+      setMembershipError(
+        err.message || "Unable to load project membership."
+      );
+    } finally {
+      setMembersLoading(false);
+    }
+  }
+
+  function closeMembershipManager() {
+    if (membershipSaving) return;
+
+    setMembershipProject(null);
+    setMembers([]);
+    setTeamMembers([]);
+    setSelectedMemberId("");
+    setMembershipError("");
+  }
+
+  async function refreshProjectMembers() {
+    if (!membershipProject) return;
+
+    const response = await apiRequest(
+      `/projects/${membershipProject.id}/members`,
+      { token }
+    );
+
+    setMembers(
+      Array.isArray(response)
+        ? response
+        : response?.members ?? []
+    );
+  }
+
+  async function handleAddMember(event) {
+    event.preventDefault();
+
+    if (!isAdmin || !membershipProject || !selectedMemberId) {
+      setMembershipError("Please select a Team Member.");
+      return;
+    }
+
+    setMembershipSaving(true);
+    setMembershipError("");
+
+    try {
+      await apiRequest(
+        `/projects/${membershipProject.id}/members`,
+        {
+          method: "POST",
+          token,
+          body: { userId: Number(selectedMemberId) },
+        }
+      );
+
+      await refreshProjectMembers();
+      setSelectedMemberId("");
+      await showSuccess("Team Member added to the project.");
+    } catch (err) {
+      setMembershipError(
+        err.message || "Unable to add this Team Member."
+      );
+    } finally {
+      setMembershipSaving(false);
+    }
+  }
+
+  async function handleRemoveMember(member) {
+    if (!isAdmin || !membershipProject || membershipSaving) return;
+
+    const confirmed = await confirmDelete(
+      `Remove ${member.name} from this project?`,
+      "They will no longer have access to this project."
+    );
+
+    if (!confirmed) return;
+
+    setMembershipSaving(true);
+    setMembershipError("");
+
+    try {
+      await apiRequest(
+        `/projects/${membershipProject.id}/members/${member.id}`,
+        {
+          method: "DELETE",
+          token,
+        }
+      );
+
+      await refreshProjectMembers();
+      await showSuccess("Team Member removed from the project.");
+    } catch (err) {
+      const message =
+        err.message || "Unable to remove this Team Member.";
+
+      setMembershipError(message);
+      await showError(message);
+    } finally {
+      setMembershipSaving(false);
+    }
+  }
+
   return (
     <section className="projects-page">
       <header className="projects-header">
@@ -309,21 +459,27 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        <button
-          className="projects-create-button"
-          type="button"
-          onClick={openCreateForm}
-        >
-          <span aria-hidden="true">+</span>
-          Create Project
-        </button>
+        {isAdmin && (
+          <button
+            className="projects-create-button"
+            type="button"
+            onClick={openCreateForm}
+          >
+            <span aria-hidden="true">+</span>
+            Create Project
+          </button>
+        )}
       </header>
 
       <section className="projects-list-section">
         <div className="projects-section-heading">
           <div>
-            <h2>Your projects</h2>
-            <p>Progress is calculated from each project's tasks.</p>
+            <h2>{isAdmin ? "All platform projects" : "Your projects"}</h2>
+            <p>
+              {isAdmin
+                ? "View and manage projects across the platform."
+                : "Projects shared with you by your Admin."}
+            </p>
           </div>
 
           <span className="projects-count">
@@ -350,14 +506,21 @@ export default function ProjectsPage() {
               <ProjectIcon />
             </div>
             <h3>No projects yet</h3>
-            <p>Create your first project to start organizing your work.</p>
-            <button
-              className="projects-create-button projects-empty-button"
-              type="button"
-              onClick={openCreateForm}
-            >
-              + Create Project
-            </button>
+            <p>
+              {isAdmin
+                ? "Create your first project to start organizing your work."
+                : "No projects have been shared with you yet. Contact your Admin."}
+            </p>
+
+            {isAdmin && (
+              <button
+                className="projects-create-button projects-empty-button"
+                type="button"
+                onClick={openCreateForm}
+              >
+                + Create Project
+              </button>
+            )}
           </div>
         ) : (
           <div className="projects-grid">
@@ -371,27 +534,29 @@ export default function ProjectsPage() {
                       <ProjectIcon />
                     </div>
 
-                    <div className="project-card-actions">
-                      <button
-                        className="project-icon-button"
-                        type="button"
-                        aria-label={`Edit ${project.name}`}
-                        title="Edit project"
-                        onClick={() => openEditForm(project)}
-                      >
-                        <EditIcon />
-                      </button>
+                    {isAdmin && (
+                      <div className="project-card-actions">
+                        <button
+                          className="project-icon-button"
+                          type="button"
+                          aria-label={`Edit ${project.name}`}
+                          title="Edit project"
+                          onClick={() => openEditForm(project)}
+                        >
+                          <EditIcon />
+                        </button>
 
-                      <button
-                        className="project-icon-button project-delete-button"
-                        type="button"
-                        aria-label={`Delete ${project.name}`}
-                        title="Delete project"
-                        onClick={() => handleDelete(project)}
-                      >
-                        <DeleteIcon />
-                      </button>
-                    </div>
+                        <button
+                          className="project-icon-button project-delete-button"
+                          type="button"
+                          aria-label={`Delete ${project.name}`}
+                          title="Delete project"
+                          onClick={() => handleDelete(project)}
+                        >
+                          <DeleteIcon />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <h3 className="project-card-title">{project.name}</h3>
@@ -448,6 +613,16 @@ export default function ProjectsPage() {
                       </div>
                     )}
                   </div>
+                  {isAdmin && (
+                    <button
+                      className="project-manage-members-button"
+                      type="button"
+                      onClick={() => openMembershipManager(project)}
+                    >
+                      <span aria-hidden="true">＋</span>
+                      Manage Members
+                    </button>
+                  )}
                 </article>
               );
             })}
@@ -455,7 +630,7 @@ export default function ProjectsPage() {
         )}
       </section>
 
-      {formOpen && (
+      {formOpen && isAdmin && (
         <div
           className="projects-modal-backdrop"
           onMouseDown={(event) => {
@@ -546,6 +721,173 @@ export default function ProjectsPage() {
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      )}
+      {membershipProject && isAdmin && (
+        <div
+          className="projects-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeMembershipManager();
+            }
+          }}
+        >
+          <section
+            className="projects-modal membership-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="membership-modal-title"
+          >
+            <div className="projects-modal-header">
+              <div>
+                <p className="projects-eyebrow">PROJECT ACCESS</p>
+                <h2 id="membership-modal-title">Manage Members</h2>
+                <p className="membership-project-name">
+                  {membershipProject.name}
+                </p>
+              </div>
+
+              <button
+                className="project-icon-button"
+                type="button"
+                aria-label="Close membership manager"
+                onClick={closeMembershipManager}
+                disabled={membershipSaving}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {membershipError && (
+              <div className="projects-error" role="alert">
+                {membershipError}
+              </div>
+            )}
+
+            {membersLoading ? (
+              <div className="projects-state" role="status">
+                Loading project members…
+              </div>
+            ) : (
+              <>
+                <form
+                  className="membership-add-form"
+                  onSubmit={handleAddMember}
+                >
+                  <label htmlFor="membership-user">
+                    Add a Team Member
+                  </label>
+
+                  <div className="membership-add-controls">
+                    <select
+                      id="membership-user"
+                      value={selectedMemberId}
+                      onChange={(event) =>
+                        setSelectedMemberId(event.target.value)
+                      }
+                      disabled={membershipSaving}
+                    >
+                      <option value="">Select a Team Member</option>
+
+                      {teamMembers
+                        .filter(
+                          (teamMember) =>
+                            !members.some(
+                              (member) =>
+                                String(member.id) ===
+                                String(teamMember.id)
+                            )
+                        )
+                        .map((teamMember) => (
+                          <option
+                            key={teamMember.id}
+                            value={teamMember.id}
+                          >
+                            {teamMember.name} ({teamMember.email})
+                          </option>
+                        ))}
+                    </select>
+
+                    <button
+                      className="projects-create-button"
+                      type="submit"
+                      disabled={
+                        membershipSaving || !selectedMemberId
+                      }
+                    >
+                      {membershipSaving ? "Saving…" : "Add Member"}
+                    </button>
+                  </div>
+
+                  {teamMembers.length === 0 && (
+                    <p className="membership-hint">
+                      No Team Member accounts are available yet.
+                    </p>
+                  )}
+                </form>
+
+                <div className="membership-list-header">
+                  <h3>Current members</h3>
+                  <span>
+                    {members.length}{" "}
+                    {members.length === 1 ? "member" : "members"}
+                  </span>
+                </div>
+
+                {members.length === 0 ? (
+                  <div className="membership-empty">
+                    No members found for this project.
+                  </div>
+                ) : (
+                  <ul className="membership-list">
+                    {members.map((member) => (
+                      <li
+                        className="membership-list-item"
+                        key={member.id}
+                      >
+                        <div className="membership-avatar" aria-hidden="true">
+                          {(member.name || "?")
+                            .trim()
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
+
+                        <div className="membership-person">
+                          <strong>{member.name}</strong>
+                          <span>{member.email}</span>
+                        </div>
+
+                        <span className="membership-role">
+                          {member.role}
+                        </span>
+
+                        <button
+                          className="membership-remove-button"
+                          type="button"
+                          onClick={() => handleRemoveMember(member)}
+                          disabled={membershipSaving}
+                          aria-label={`Remove ${member.name} from project`}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+
+            <div className="projects-form-actions membership-footer">
+              <button
+                className="projects-cancel-button"
+                type="button"
+                onClick={closeMembershipManager}
+                disabled={membershipSaving}
+              >
+                Close
+              </button>
+            </div>
           </section>
         </div>
       )}

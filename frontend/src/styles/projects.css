@@ -615,3 +615,234 @@
     transform: none;
   }
 }
+
+/* =========================================
+   PROJECT MEMBERSHIP MANAGEMENT
+========================================= */
+
+.project-manage-members-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  margin-top: 18px;
+  padding: 10px 13px;
+  border: 1px solid #d9e3f1;
+  border-radius: 10px;
+  background: #e0e7f4;
+  color: #294b78;
+  font-size: 0.84rem;
+  font-weight: 750;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.project-manage-members-button:hover {
+  border-color: #b8cbe5;
+  background: #eaf1fb;
+}
+
+.membership-modal {
+  width: min(100%, 620px);
+}
+
+.membership-project-name {
+  margin: 8px 0 0;
+  color: #748198;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
+}
+
+.membership-add-form {
+  display: grid;
+  gap: 10px;
+  padding: 17px;
+  border: 1px solid #e3eaf4;
+  border-radius: 12px;
+  background: #f8faff;
+}
+
+.membership-add-form label {
+  color: #34445b;
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.membership-add-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.membership-add-controls select {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #d7dfeb;
+  border-radius: 9px;
+  background: #fff;
+  color: #24364f;
+  font: inherit;
+  font-size: 0.84rem;
+}
+
+.membership-add-controls select:focus {
+  outline: 3px solid rgb(91 129 183 / 14%);
+  border-color: #6688b5;
+}
+
+.membership-add-controls .projects-create-button {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.membership-hint {
+  margin: 0;
+  color: #7b879b;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.membership-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 12px;
+}
+
+.membership-list-header h3 {
+  margin: 0;
+  color: #192f52;
+  font-size: 1rem;
+}
+
+.membership-list-header > span {
+  color: #748198;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.membership-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.membership-list-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e5eaf2;
+  border-radius: 11px;
+  background: #fff;
+}
+
+.membership-avatar {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #eaf1ff;
+  color: #345d95;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.membership-person {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.membership-person strong {
+  overflow: hidden;
+  color: #24364f;
+  font-size: 0.85rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.membership-person span {
+  overflow-wrap: anywhere;
+  color: #7b879b;
+  font-size: 0.77rem;
+}
+
+.membership-role {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #edf3fc;
+  color: #345d95;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.membership-remove-button {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border: 1px solid #f0d0d2;
+  border-radius: 8px;
+  background: #fff;
+  color: #a52e3b;
+  font-size: 0.77rem;
+  font-weight: 750;
+}
+
+.membership-remove-button:hover:not(:disabled) {
+  background: #fff1f2;
+}
+
+.membership-remove-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.membership-empty {
+  padding: 24px 14px;
+  border: 1px dashed #dbe3ef;
+  border-radius: 11px;
+  color: #748198;
+  font-size: 0.86rem;
+  text-align: center;
+}
+
+.membership-footer {
+  margin-top: 20px;
+}
+
+@media (max-width: 560px) {
+  .membership-add-controls {
+    flex-direction: column;
+  }
+
+  .membership-add-controls .projects-create-button {
+    width: 100%;
+  }
+
+  .membership-list-item {
+    flex-wrap: wrap;
+  }
+
+  .membership-person {
+    flex-basis: calc(100% - 55px);
+  }
+
+  .membership-role {
+    margin-left: 49px;
+  }
+
+  .membership-remove-button {
+    margin-left: auto;
+  }
+}
