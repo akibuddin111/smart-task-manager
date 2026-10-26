@@ -2,11 +2,19 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
+const jwtSecret = process.env.JWT_SECRET;
+
+if (!jwtSecret || Buffer.byteLength(jwtSecret, "utf8") < 32) {
+  console.error(
+    "Startup failed: JWT_SECRET must be configured with at least 32 bytes."
+  );
+  process.exit(1);
+}
+
 const pool = require("./config/db");
 
 const authRoutes = require("./routes/authRoutes");
 const projectRoutes = require("./routes/projectRoutes");
-const authMiddleware = require("./middleware/authMiddleware");
 const taskRoutes = require("./routes/taskRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 
@@ -14,7 +22,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  })
+);
 app.use(express.json({ limit: "10kb" }));
 
 // Root endpoint
@@ -44,40 +56,11 @@ app.get("/api/health/db", async (req, res) => {
   }
 });
 
-// Authentication routes
 app.use("/api/auth", authRoutes);
 
 app.use("/api/projects", projectRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-
-// Protected test endpoint
-app.get("/api/auth/me", authMiddleware, async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT id, name, email, created_at
-       FROM users
-       WHERE id = $1`,
-      [req.user.id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({
-        message: "User account no longer exists.",
-      });
-    }
-
-    res.json({
-      user: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Fetching user failed:", error.message);
-
-    res.status(500).json({
-      message: "Unable to fetch user information.",
-    });
-  }
-});
 
 // Start server
 app.listen(PORT, () => {

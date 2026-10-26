@@ -1,7 +1,18 @@
+
 const pool = require("../config/db");
 
-// Create a project
+function isAdmin(req) {
+  return req.user?.role === "Admin";
+}
+
+// Create a project: Admin only.
 async function createProject(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({
+      message: "Only Admins can create projects.",
+    });
+  }
+
   try {
     const { name, description = "" } = req.body;
 
@@ -43,15 +54,28 @@ async function createProject(req, res) {
   }
 }
 
-// List projects owned by the authenticated user
+// Admins see all projects; Team Members see their memberships.
 async function getProjects(req, res) {
   try {
     const result = await pool.query(
-      `SELECT id, name, description, owner_id, created_at, updated_at
-       FROM projects
-       WHERE owner_id = $1
-       ORDER BY created_at DESC`,
-      [req.user.id]
+      `SELECT
+         p.id,
+         p.name,
+         p.description,
+         p.owner_id,
+         p.created_at,
+         p.updated_at
+       FROM projects p
+       WHERE
+         $1 = 'Admin'
+         OR EXISTS (
+           SELECT 1
+           FROM project_members pm
+           WHERE pm.project_id = p.id
+             AND pm.user_id = $2
+         )
+       ORDER BY p.created_at DESC`,
+      [req.user.role, req.user.id]
     );
 
     return res.status(200).json({
@@ -67,7 +91,7 @@ async function getProjects(req, res) {
   }
 }
 
-// Get one project owned by the authenticated user
+// Retrieve a project visible to the current user.
 async function getProjectById(req, res) {
   try {
     const { id } = req.params;
@@ -79,10 +103,21 @@ async function getProjectById(req, res) {
     }
 
     const result = await pool.query(
-      `SELECT id, name, description, owner_id, created_at, updated_at
-       FROM projects
-       WHERE id = $1 AND owner_id = $2`,
-      [id, req.user.id]
+      `SELECT
+         p.id, p.name, p.description, p.owner_id,
+         p.created_at, p.updated_at
+       FROM projects p
+       WHERE p.id = $1
+         AND (
+           $2 = 'Admin'
+           OR EXISTS (
+             SELECT 1
+             FROM project_members pm
+             WHERE pm.project_id = p.id
+               AND pm.user_id = $3
+           )
+         )`,
+      [id, req.user.role, req.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -103,8 +138,14 @@ async function getProjectById(req, res) {
   }
 }
 
-// Update one project owned by the authenticated user
+// Update a project: Admin only.
 async function updateProject(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({
+      message: "Only Admins can update projects.",
+    });
+  }
+
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -144,12 +185,11 @@ async function updateProject(req, res) {
       });
     }
 
-    // Load only a project owned by the authenticated user.
     const existingResult = await pool.query(
       `SELECT id, name, description
        FROM projects
-       WHERE id = $1 AND owner_id = $2`,
-      [id, req.user.id]
+       WHERE id = $1`,
+      [id]
     );
 
     if (existingResult.rows.length === 0) {
@@ -158,14 +198,12 @@ async function updateProject(req, res) {
       });
     }
 
-    const existingProject = existingResult.rows[0];
-
+    const existing = existingResult.rows[0];
     const updatedName =
-      name === undefined ? existingProject.name : name.trim();
-
+      name === undefined ? existing.name : name.trim();
     const updatedDescription =
       description === undefined
-        ? existingProject.description
+        ? existing.description
         : description.trim();
 
     const result = await pool.query(
@@ -173,9 +211,9 @@ async function updateProject(req, res) {
        SET name = $1,
            description = $2,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $3 AND owner_id = $4
+       WHERE id = $3
        RETURNING id, name, description, owner_id, created_at, updated_at`,
-      [updatedName, updatedDescription, id, req.user.id]
+      [updatedName, updatedDescription, id]
     );
 
     return res.status(200).json({
@@ -191,8 +229,14 @@ async function updateProject(req, res) {
   }
 }
 
-// Delete one project owned by the authenticated user
+// Delete a project: Admin only.
 async function deleteProject(req, res) {
+  if (!isAdmin(req)) {
+    return res.status(403).json({
+      message: "Only Admins can delete projects.",
+    });
+  }
+
   try {
     const { id } = req.params;
 
@@ -204,9 +248,9 @@ async function deleteProject(req, res) {
 
     const result = await pool.query(
       `DELETE FROM projects
-       WHERE id = $1 AND owner_id = $2
+       WHERE id = $1
        RETURNING id`,
-      [id, req.user.id]
+      [id]
     );
 
     if (result.rows.length === 0) {

@@ -69,7 +69,7 @@ async function register(req, res) {
     const result = await pool.query(
       `INSERT INTO users (name, email, password_hash)
        VALUES ($1, $2, $3)
-       RETURNING id, name, email, created_at`,
+       RETURNING id, name, email, role, created_at`,
       [normalizedName, normalizedEmail, passwordHash]
     );
 
@@ -113,7 +113,7 @@ async function login(req, res) {
     const normalizedEmail = email.trim().toLowerCase();
 
     const result = await pool.query(
-      `SELECT id, name, email, password_hash
+      `SELECT id, name, email, password_hash, role
        FROM users
        WHERE email = $1`,
       [normalizedEmail]
@@ -148,6 +148,7 @@ async function login(req, res) {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {
@@ -162,7 +163,7 @@ async function login(req, res) {
 async function getCurrentUser(req, res) {
   try {
     const result = await pool.query(
-      `SELECT id, name, email
+      `SELECT id, name, email, role
        FROM users
        WHERE id = $1`,
       [req.user.id]
@@ -190,7 +191,7 @@ async function getCurrentUser(req, res) {
 async function getUsers(req, res) {
   try {
     const result = await pool.query(
-      `SELECT id, name, email
+      `SELECT id, name
        FROM users
        ORDER BY name ASC`
     );
@@ -207,9 +208,35 @@ async function getUsers(req, res) {
   }
 }
 
+
+ // GET /api/auth/team-members
+  async function getTeamMembers(req, res) {
+    try {
+      const result = await pool.query(
+        `SELECT id, name, email
+        FROM users
+        WHERE role = $1
+        ORDER BY name ASC`,
+        ["Team Member"]
+      );
+
+      return res.status(200).json({
+        users: result.rows,
+      });
+    } catch (error) {
+      console.error("Fetching team members failed:", error.message);
+
+      return res.status(500).json({
+        message: "Unable to fetch team members.",
+      });
+    }
+  }
+
+
 module.exports = {
   register,
   login,
   getCurrentUser,
   getUsers,
+  getTeamMembers,
 };

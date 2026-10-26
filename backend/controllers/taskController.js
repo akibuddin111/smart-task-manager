@@ -1,3 +1,4 @@
+
 const pool = require("../config/db");
 
 const VALID_STATUSES = ["To Do", "In Progress", "Completed"];
@@ -10,13 +11,8 @@ function isValidId(value) {
 
 // Validate a real calendar date in YYYY-MM-DD format.
 function isValidDate(value) {
-  if (typeof value !== "string") {
-    return false;
-  }
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
+  if (typeof value !== "string") return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
 
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -28,19 +24,27 @@ function isValidDate(value) {
   );
 }
 
-// Check that a project belongs to the authenticated user.
-async function userOwnsProject(projectId, userId) {
+// Admins can access every project. Team Members need membership.
+async function canAccessProject(projectId, user) {
+  if (user.role === "Admin") return true;
+
   const result = await pool.query(
-    `SELECT id
-     FROM projects
-     WHERE id = $1 AND owner_id = $2`,
-    [projectId, userId]
+    `SELECT p.id
+     FROM projects p
+     WHERE p.id = $1
+       AND EXISTS (
+         SELECT 1
+         FROM project_members pm
+         WHERE pm.project_id = p.id
+           AND pm.user_id = $2
+       )`,
+    [projectId, user.id]
   );
 
   return result.rows.length > 0;
 }
 
-// Create a task.
+// Create a task in a project the current user can access.
 async function createTask(req, res) {
   try {
     const {
@@ -53,7 +57,6 @@ async function createTask(req, res) {
       deadline,
     } = req.body;
 
-    // Validate required fields.
     if (
       typeof title !== "string" ||
       !title.trim() ||
@@ -105,19 +108,14 @@ async function createTask(req, res) {
       });
     }
 
-    // The authenticated user must own the selected project.
-    const ownsProject = await userOwnsProject(
-      project_id,
-      req.user.id
-    );
+    const projectAccessible = await canAccessProject(project_id, req.user);
 
-    if (!ownsProject) {
+    if (!projectAccessible) {
       return res.status(404).json({
         message: "Project not found.",
       });
     }
 
-    // Confirm that the assignee is a registered user.
     const assigneeResult = await pool.query(
       "SELECT id FROM users WHERE id = $1",
       [assignee_id]
@@ -175,18 +173,25 @@ async function createTask(req, res) {
   }
 }
 
-// List tasks, optionally filtered by project, status, priority, and assignee.
+// List tasks with optional project, status, priority, and assignee filters.
 async function getTasks(req, res) {
   try {
-    const {
-      project_id,
-      status,
-      priority,
-      assignee_id,
-    } = req.query;
+    const { project_id, status, priority, assignee_id } = req.query;
 
-    const conditions = ["p.owner_id = $1"];
-    const values = [req.user.id];
+    // The base condition limits Team Members to their project memberships.
+    const conditions = [
+      `(
+        $1 = 'Admin'
+        OR EXISTS (
+          SELECT 1
+          FROM project_members pm
+          WHERE pm.project_id = p.id
+            AND pm.user_id = $2
+        )
+      )`,
+    ];
+
+    const values = [req.user.role, req.user.id];
 
     function addFilter(column, value) {
       values.push(value);
@@ -271,7 +276,7 @@ async function getTasks(req, res) {
   }
 }
 
-// Retrieve one task from a project owned by the authenticated user.
+// Retrieve a single task only if its project is accessible.
 async function getTaskById(req, res) {
   try {
     const { id } = req.params;
@@ -299,8 +304,17 @@ async function getTaskById(req, res) {
        FROM tasks t
        INNER JOIN projects p ON p.id = t.project_id
        INNER JOIN users u ON u.id = t.assignee_id
-       WHERE t.id = $1 AND p.owner_id = $2`,
-      [id, req.user.id]
+       WHERE t.id = $1
+         AND (
+           $2 = 'Admin'
+           OR EXISTS (
+             SELECT 1
+             FROM project_members pm
+             WHERE pm.project_id = p.id
+               AND pm.user_id = $3
+           )
+         )`,
+      [id, req.user.role, req.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -321,7 +335,7 @@ async function getTaskById(req, res) {
   }
 }
 
-// Update a task.
+// Update a task only when the user can access both its current and target projects.
 async function updateTask(req, res) {
   try {
     const { id } = req.params;
@@ -381,60 +395,53 @@ async function updateTask(req, res) {
       });
     }
 
-    if (
-      project_id !== undefined &&
-      !isValidId(project_id)
-    ) {
+    if (project_id !== undefined && !isValidId(project_id)) {
       return res.status(400).json({
         message: "Invalid project_id.",
       });
     }
 
-    if (
-      assignee_id !== undefined &&
-      !isValidId(assignee_id)
-    ) {
+    if (assignee_id !== undefined && !isValidId(assignee_id)) {
       return res.status(400).json({
         message: "Invalid assignee_id.",
       });
     }
 
-    if (
-      status !== undefined &&
-      !VALID_STATUSES.includes(status)
-    ) {
+    if (status !== undefined && !VALID_STATUSES.includes(status)) {
       return res.status(400).json({
         message: "Invalid task status.",
         allowedStatuses: VALID_STATUSES,
       });
     }
 
-    if (
-      priority !== undefined &&
-      !VALID_PRIORITIES.includes(priority)
-    ) {
+    if (priority !== undefined && !VALID_PRIORITIES.includes(priority)) {
       return res.status(400).json({
         message: "Invalid task priority.",
         allowedPriorities: VALID_PRIORITIES,
       });
     }
 
-    if (
-      deadline !== undefined &&
-      !isValidDate(deadline)
-    ) {
+    if (deadline !== undefined && !isValidDate(deadline)) {
       return res.status(400).json({
         message: "Deadline must be a valid date in YYYY-MM-DD format.",
       });
     }
 
-    // Load the existing task only if its project belongs to this user.
     const existingResult = await pool.query(
       `SELECT t.*
        FROM tasks t
        INNER JOIN projects p ON p.id = t.project_id
-       WHERE t.id = $1 AND p.owner_id = $2`,
-      [id, req.user.id]
+       WHERE t.id = $1
+         AND (
+           $2 = 'Admin'
+           OR EXISTS (
+             SELECT 1
+             FROM project_members pm
+             WHERE pm.project_id = p.id
+               AND pm.user_id = $3
+           )
+         )`,
+      [id, req.user.role, req.user.id]
     );
 
     if (existingResult.rows.length === 0) {
@@ -451,13 +458,12 @@ async function updateTask(req, res) {
     const updatedAssigneeId =
       assignee_id === undefined ? existing.assignee_id : assignee_id;
 
-    // If the task moves to another project, the user must own that project too.
-    const ownsTargetProject = await userOwnsProject(
+    const targetProjectAccessible = await canAccessProject(
       updatedProjectId,
-      req.user.id
+      req.user
     );
 
-    if (!ownsTargetProject) {
+    if (!targetProjectAccessible) {
       return res.status(404).json({
         message: "Project not found.",
       });
@@ -498,9 +504,7 @@ async function updateTask(req, res) {
          updated_at`,
       [
         title === undefined ? existing.title : title.trim(),
-        description === undefined
-          ? existing.description
-          : description.trim(),
+        description === undefined ? existing.description : description.trim(),
         updatedProjectId,
         updatedAssigneeId,
         status === undefined ? existing.status : status,
@@ -523,8 +527,14 @@ async function updateTask(req, res) {
   }
 }
 
-// Delete a task from a project owned by the authenticated user.
+// Only Admin users can delete tasks.
 async function deleteTask(req, res) {
+  if (req.user.role !== "Admin") {
+    return res.status(403).json({
+      message: "Only Admin users can delete tasks.",
+    });
+  }
+
   try {
     const { id } = req.params;
 
@@ -535,13 +545,10 @@ async function deleteTask(req, res) {
     }
 
     const result = await pool.query(
-      `DELETE FROM tasks t
-       USING projects p
-       WHERE t.project_id = p.id
-         AND t.id = $1
-         AND p.owner_id = $2
-       RETURNING t.id`,
-      [id, req.user.id]
+      `DELETE FROM tasks
+       WHERE id = $1
+       RETURNING id`,
+      [id]
     );
 
     if (result.rows.length === 0) {
