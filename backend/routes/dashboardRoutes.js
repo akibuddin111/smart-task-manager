@@ -2,6 +2,7 @@ const express = require("express");
 const authMiddleware = require("../middleware/authMiddleware");
 const {
   getDashboardMetrics,
+  getOverdueTasks,
 } = require("../controllers/dashboardController");
 
 const router = express.Router();
@@ -10,5 +11,6 @@ const router = express.Router();
 router.use(authMiddleware);
 
 router.get("/metrics", getDashboardMetrics);
+router.get("/overdue-tasks", getOverdueTasks);
 
 module.exports = router;
