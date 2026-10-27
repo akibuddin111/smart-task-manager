@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import "../styles/dashboard.css";
 
 const metricDefinitions = [
@@ -190,7 +190,11 @@ export default function DashboardPage() {
   }, [token]);
 
   useEffect(() => {
-    loadDashboard();
+    const timerId = setTimeout(() => {
+      loadDashboard();
+    }, 0);
+
+    return () => clearTimeout(timerId);
   }, [loadDashboard]);
 
   const today = getTodayString();

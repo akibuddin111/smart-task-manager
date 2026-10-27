@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import { apiRequest } from "../api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import "../styles/tasks.css";
 
 const EMPTY_FORM = {
@@ -150,7 +150,11 @@ export default function TasksPage() {
   }, [token]);
 
   useEffect(() => {
-    loadData();
+    const timerId = setTimeout(() => {
+      loadData();
+    }, 0);
+
+    return () => clearTimeout(timerId);
   }, [loadData]);
 
   const filteredTasks = useMemo(() => {

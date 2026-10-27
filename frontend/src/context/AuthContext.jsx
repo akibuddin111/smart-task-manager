@@ -1,12 +1,8 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
-import { apiRequest } from "../api";
 
-const AuthContext = createContext(null);
+import { useEffect, useState } from "react";
+import { apiRequest } from "../api";
+import { AuthContext } from "./authContextValue";
+
 const TOKEN_KEY = "smart_task_manager_token";
 
 export function AuthProvider({ children }) {
@@ -46,7 +42,6 @@ export function AuthProvider({ children }) {
       }
     }
 
-    setLoading(true);
     loadUser();
 
     return () => {
@@ -58,12 +53,14 @@ export function AuthProvider({ children }) {
     localStorage.setItem(TOKEN_KEY, result.token);
     setUser(result.user);
     setToken(result.token);
+    setLoading(false);
   }
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
+    setLoading(false);
   }
 
   return (
@@ -73,14 +70,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider.");
-  }
-
-  return context;
 }

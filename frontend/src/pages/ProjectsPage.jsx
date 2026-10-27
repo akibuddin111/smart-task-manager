@@ -1,7 +1,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "../api";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import {
   showSuccess,
   showError,
@@ -197,7 +197,11 @@ export default function ProjectsPage() {
   }, [token]);
 
   useEffect(() => {
-    loadProjects();
+    const timerId = setTimeout(() => {
+      loadProjects();
+    }, 0);
+
+    return () => clearTimeout(timerId);
   }, [loadProjects]);
 
   function openCreateForm() {
