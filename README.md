@@ -79,16 +79,37 @@ git clone https://github.com/akibuddin111/smart-task-manager.git
 cd smart-task-manager
 ```
 
-### 2. Configure PostgreSQL
+## Database Schema, Migrations, and Sample Data
 
-Create a PostgreSQL database named `smart_task_manager`.
+### Database Schema
 
-Apply the SQL migration files in the following order using pgAdmin or another PostgreSQL client:
+The application uses PostgreSQL to persist users, projects, tasks, and project membership information.
 
-1. `backend/migrations/001_create_initial_schema.sql`
-2. `backend/migrations/002_add_role_based_permissions.sql`
+The database schema is maintained through SQL migration files in `backend/migrations/`:
 
-Run each migration only once on a database that does not already contain its changes. If the database has already been initialized, check its current schema before applying migrations again.
+- `001_create_initial_schema.sql` — creates the initial database schema, including users, projects, tasks, and migration tracking.
+- `002_add_role_based_permissions.sql` — adds role-based permissions and project membership support.
+
+### Applying Migrations
+
+1. Create a PostgreSQL database named `smart_task_manager`.
+2. Open the database in pgAdmin.
+3. Execute `001_create_initial_schema.sql`.
+4. Execute `002_add_role_based_permissions.sql`.
+
+Apply the migrations in numerical order. Do not rerun migrations against a database that already contains their changes.
+
+### Preparing Sample Data
+
+No separate seed script is currently documented. To prepare data for a demonstration:
+
+1. Start the backend and frontend.
+2. Register an account through the application's registration page.
+3. Log in and create a project.
+4. Create tasks associated with the project and assign them to registered users.
+5. Use different task statuses, priorities, and deadlines to demonstrate the dashboard metrics and overdue-task notifications.
+
+Use test accounts and demonstration data only. Do not use real customer data or production credentials.
 
 ### 3. Configure the backend
 
@@ -170,10 +191,6 @@ If this variable is omitted, the frontend uses `http://localhost:5000/api` by de
 Only expose non-secret configuration through frontend environment variables. Variables prefixed with `VITE_` are included in the client-side application and must not contain passwords or private secrets.
 
 
-## Database Migrations
-
-Database schema changes are maintained in SQL migration files under `backend/migrations/`. Apply migrations in numerical order and retain them in source control so the database structure can be reproduced.
-
 ## API Documentation
 
 The backend exposes REST API routes for authentication, projects, tasks, and dashboard data. Refer to the API endpoint documentation in this repository once finalized.
@@ -196,6 +213,8 @@ The backend exposes REST API routes for authentication, projects, tasks, and das
 | `frontend/` | `npm run build` | Build frontend for production |
 | `frontend/` | `npm run lint` | Run ESLint |
 
-## Project Status
+## Project Documentation
 
-This project was developed as a technical recruitment assessment. Setup instructions, API documentation, and testing evidence should be checked against the final repository before submission.
+- [API Endpoint Reference](API_ENDPOINTS.md)
+- [AI Usage Report](AI_USAGE_REPORT.md)
+- [Original AI Project Instruction Prompt](docs/INITIAL_AI_PROMPT.md)
