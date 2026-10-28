@@ -102,7 +102,7 @@ function EditIcon() {
 }
 
 export default function TasksPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -123,6 +123,9 @@ export default function TasksPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
+
+  const isAdmin = user?.role === "Admin";
+  const isReadOnlyTaskEdit = Boolean(editingTask) && !isAdmin;
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -233,41 +236,53 @@ export default function TasksPage() {
     event.preventDefault();
     setFormError("");
 
-    if (
-      !form.title.trim() ||
-      !form.project_id ||
-      !form.assignee_id ||
-      !form.deadline
-    ) {
-      setFormError(
-        "Title, project, assignee, and deadline are required."
-      );
-      return;
+    
+    // Team Members editing a task may submit only its status.
+    if (isReadOnlyTaskEdit) {
+      if (!STATUSES.includes(form.status)) {
+        setFormError("Please select a valid task status.");
+        return;
+      }
+    } else {
+      if (
+        !form.title.trim() ||
+        !form.project_id ||
+        !form.assignee_id ||
+        !form.deadline
+      ) {
+        setFormError(
+          "Title, project, assignee, and deadline are required."
+        );
+        return;
+      }
+
+      const [year, month, day] = form.deadline.split("-").map(Number);
+      const parsedDate = new Date(Date.UTC(year, month - 1, day));
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(form.deadline) ||
+        !year ||
+        parsedDate.getUTCFullYear() !== year ||
+        parsedDate.getUTCMonth() !== month - 1 ||
+        parsedDate.getUTCDate() !== day
+      ) {
+        setFormError("Please provide a valid calendar date.");
+        return;
+      }
     }
 
-    const [year, month, day] = form.deadline.split("-").map(Number);
-    const parsedDate = new Date(Date.UTC(year, month - 1, day));
+    const payload = isReadOnlyTaskEdit
+      ? { status: form.status }
+      : {
+          title: form.title.trim(),
+          description: form.description.trim(),
+          project_id: Number(form.project_id),
+          assignee_id: Number(form.assignee_id),
+          status: form.status,
+          priority: form.priority,
+          deadline: form.deadline,
+        };
 
-    if (
-      !/^\d{4}-\d{2}-\d{2}$/.test(form.deadline) ||
-      !year ||
-      parsedDate.getUTCFullYear() !== year ||
-      parsedDate.getUTCMonth() !== month - 1 ||
-      parsedDate.getUTCDate() !== day
-    ) {
-      setFormError("Please provide a valid calendar date.");
-      return;
-    }
-
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      project_id: Number(form.project_id),
-      assignee_id: Number(form.assignee_id),
-      status: form.status,
-      priority: form.priority,
-      deadline: form.deadline,
-    };
 
     setSaving(true);
 
@@ -371,13 +386,19 @@ export default function TasksPage() {
           type="button"
           className="tasks-primary-button"
           onClick={openCreateModal}
-          disabled={!projects.length || !users.length}
+          disabled={
+            user?.role !== "Admin" ||
+            !projects.length ||
+            !users.length
+          }
           title={
-            !projects.length
-              ? "Create a project before adding a task"
-              : !users.length
-                ? "Register a user before assigning a task"
-                : "Create a task"
+            user?.role !== "Admin"
+              ? "Only Admin users can create tasks"
+              : !projects.length
+                ? "Create a project before adding a task"
+                : !users.length
+                  ? "Register a user before assigning a task"
+                  : "Create a task"
           }
         >
           <span aria-hidden="true">＋</span>
@@ -668,6 +689,7 @@ export default function TasksPage() {
                   name="title"
                   value={form.title}
                   onChange={handleFormChange}
+                  disabled={isReadOnlyTaskEdit}
                   maxLength={200}
                   required
                   autoFocus
@@ -681,6 +703,7 @@ export default function TasksPage() {
                   name="description"
                   value={form.description}
                   onChange={handleFormChange}
+                  disabled={isReadOnlyTaskEdit}
                   rows={3}
                   placeholder="Add details about this task..."
                 />
@@ -692,6 +715,7 @@ export default function TasksPage() {
                   name="project_id"
                   value={form.project_id}
                   onChange={handleFormChange}
+                  disabled={isReadOnlyTaskEdit}
                   required
                 >
                   <option value="">Select a project</option>
@@ -709,6 +733,7 @@ export default function TasksPage() {
                   name="assignee_id"
                   value={form.assignee_id}
                   onChange={handleFormChange}
+                  disabled={isReadOnlyTaskEdit}
                   required
                 >
                   <option value="">Select an assignee</option>
@@ -726,6 +751,7 @@ export default function TasksPage() {
                   name="priority"
                   value={form.priority}
                   onChange={handleFormChange}
+                  disabled={isReadOnlyTaskEdit}
                 >
                   {PRIORITIES.map((priority) => (
                     <option key={priority} value={priority}>
@@ -757,6 +783,7 @@ export default function TasksPage() {
                   name="deadline"
                   value={form.deadline}
                   onChange={handleFormChange}
+                  disabled={isReadOnlyTaskEdit}
                   required
                 />
               </label>
@@ -784,9 +811,11 @@ export default function TasksPage() {
                 >
                   {saving
                     ? "Saving..."
-                    : editingTask
-                      ? "Save changes"
-                      : "Create task"}
+                    : isReadOnlyTaskEdit
+                      ? "Update status"
+                      : editingTask
+                        ? "Save changes"
+                        : "Create task"}
                 </button>
               </footer>
             </form>

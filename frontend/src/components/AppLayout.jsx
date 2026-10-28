@@ -195,7 +195,6 @@ export default function AppLayout() {
           <span className="sidebar-logo">SM</span>
           <span className="sidebar-brand-text">
             <strong>Smart Task</strong>
-            <small>Management workspace</small>
           </span>
         </NavLink>
 

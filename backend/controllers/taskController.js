@@ -46,6 +46,11 @@ async function canAccessProject(projectId, user) {
 
 // Create a task in a project the current user can access.
 async function createTask(req, res) {
+  if (req.user.role !== "Admin") {
+    return res.status(403).json({
+      message: "Only Admin users can create tasks.",
+    });
+  }
   try {
     const {
       title,
@@ -337,6 +342,32 @@ async function getTaskById(req, res) {
 
 // Update a task only when the user can access both its current and target projects.
 async function updateTask(req, res) {
+  if (req.user.role !== "Admin") {
+    const submittedFields = Object.keys(req.body);
+    const allowedFields = ["status"];
+
+    const hasDisallowedFields = submittedFields.some(
+      (field) => !allowedFields.includes(field)
+    );
+
+    if (hasDisallowedFields) {
+      return res.status(403).json({
+        message:
+          "Team Members can update only the task status.",
+      });
+    }
+
+    if (
+      typeof req.body.status !== "string" ||
+      !VALID_STATUSES.includes(req.body.status)
+    ) {
+      return res.status(400).json({
+        message: "A valid task status is required.",
+        allowedStatuses: VALID_STATUSES,
+      });
+    }
+  }
+
   try {
     const { id } = req.params;
 

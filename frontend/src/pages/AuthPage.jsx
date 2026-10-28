@@ -15,6 +15,32 @@ export default function AuthPage({ mode }) {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [showPassword, setShowPassword] = useState(false);
+
+  const demoAccounts = [
+    {
+      label: "Fill Admin Demo",
+      name: "Admin",
+      email: import.meta.env.VITE_DEMO_ADMIN_EMAIL || "",
+      password: import.meta.env.VITE_DEMO_ADMIN_PASSWORD || "",
+      badge: "Full Access",
+    },
+    {
+      label: "Fill Team Member Demo",
+      name: "Team Member",
+      email: import.meta.env.VITE_DEMO_MEMBER_EMAIL || "",
+      password: import.meta.env.VITE_DEMO_MEMBER_PASSWORD || "",
+      badge: "Member View",
+    },
+  ];
+
+  function fillDemoAccount(account) {
+    setEmail(account.email);
+    setPassword(account.password);
+    setShowPassword(false);
+    setError("");
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
@@ -105,21 +131,47 @@ export default function AuthPage({ mode }) {
               />
             </label>
 
+            
             <label>
               Password
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="At least 8 characters"
-                minLength={8}
-                maxLength={72}
-                autoComplete={
-                  isRegister ? "new-password" : "current-password"
-                }
-                required
-              />
+              <div className="auth-password-wrap">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  minLength={8}
+                  maxLength={72}
+                  autoComplete={
+                    isRegister ? "new-password" : "current-password"
+                  }
+                  required
+                />
+
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.6 10.6a2 2 0 002.8 2.8" />
+                      <path d="M9.9 5.2A11 11 0 0121 12a11.8 11.8 0 01-3.1 3.9" />
+                      <path d="M6.2 6.2A12 12 0 003 12a11 11 0 0018 6" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </label>
+
 
             {error && (
               <div className="auth-error" role="alert">
@@ -139,6 +191,65 @@ export default function AuthPage({ mode }) {
                   : "Sign in"}
             </button>
           </form>
+          
+          {!isRegister && (
+            <section className="demo-accounts">
+              <div className="demo-divider" />
+
+              <h3 className="demo-heading">
+                <span aria-hidden="true">⚡</span>
+                DEMO ACCOUNTS (CLICK TO FILL FIELDS)
+              </h3>
+
+              {demoAccounts.map((account) => (
+                <button
+                  key={account.name}
+                  type="button"
+                  className="demo-account-button"
+                  onClick={() => fillDemoAccount(account)}
+                  disabled={!account.email || !account.password}
+                >
+                  <span className="demo-account-icon" aria-hidden="true">
+                    {account.name === "Admin" ? (
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 3l7 3v5c0 4.5-3 7.5-7 10-4-2.5-7-5.5-7-10V6l7-3z" />
+                        <path d="M9 12l2 2 4-4" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="9" cy="8" r="4" />
+                        <path d="M2 21v-2a7 7 0 0114 0v2" />
+                        <path d="M19 8v6M16 11h6" />
+                      </svg>
+                    )}
+                  </span>
+
+                  <span className="demo-account-label">
+                    {account.label}
+                    <small>{account.name}</small>
+                  </span>
+
+                  <span
+                    className={`demo-account-badge ${
+                      account.name === "Admin"
+                        ? "demo-badge-admin"
+                        : "demo-badge-member"
+                    }`}
+                  >
+                    {account.badge}
+                  </span>
+                </button>
+              ))}
+
+              {demoAccounts.some(
+                (account) => !account.email || !account.password
+              ) && (
+                <p className="demo-setup-note">
+                  Configure the demo account variables to enable these buttons.
+                </p>
+              )}
+            </section>
+          )}
 
           <p className="auth-switch">
             {isRegister

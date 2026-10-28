@@ -199,3 +199,162 @@
     padding: 44px 24px;
   }
 }
+
+/* Password visibility toggle */
+.auth-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-card .auth-password-wrap input {
+  padding-right: 48px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  border: 0;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+}
+
+.auth-password-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auth-password-toggle:hover {
+  color: #254d80;
+}
+
+.auth-password-toggle:focus-visible,
+.demo-account-button:focus-visible {
+  outline: 3px solid #b9d0ff;
+  outline-offset: 3px;
+}
+
+/* Demo account section */
+.demo-accounts {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.demo-divider {
+  height: 1px;
+  margin-bottom: 5px;
+  background: #e4e9f2;
+}
+
+.demo-heading {
+  margin: 0 0 2px;
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.demo-heading span {
+  margin-right: 5px;
+  color: #f59e0b;
+}
+
+.demo-account-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 1px solid #e1e7f0;
+  border-radius: 24px;
+  background: #fff;
+  color: #182230;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.demo-account-button:hover:not(:disabled) {
+  border-color: #9bb8ef;
+  background: #f8faff;
+}
+
+.demo-account-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.demo-account-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  color: #344563;
+}
+
+.demo-account-button:nth-of-type(2) .demo-account-icon {
+  color: #079669;
+}
+
+.demo-account-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.demo-account-label {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.83rem;
+  font-weight: 750;
+}
+
+.demo-account-label small {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.demo-account-badge {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.demo-badge-admin {
+  background: #edf2ff;
+  color: #294b91;
+}
+
+.demo-badge-member {
+  background: #e8fbf2;
+  color: #079669;
+}
+
+.demo-setup-note {
+  margin: 2px 0 0;
+  color: #667085;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
